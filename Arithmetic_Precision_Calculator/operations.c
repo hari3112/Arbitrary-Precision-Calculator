@@ -89,6 +89,7 @@ void swap_list(Ilist **head1, Ilist **head2){
 
 Status print_list(Ilist *head){
     Ilist *temp = head, *temp1 = head;
+    int flag = 1;
     printf("head->");
     while(temp != NULL){
         printf("%d<->",temp->data);
@@ -96,9 +97,12 @@ Status print_list(Ilist *head){
     }
     printf("tail\n");
 
+    printf("The result is : ");
     while(temp1 != NULL){
-        if(temp1->data != 0)
+        if(temp1->data != 0){
+            flag = 0;
             break;
+        }
         temp1 = temp1->next;
     }
     
@@ -106,6 +110,10 @@ Status print_list(Ilist *head){
         printf("%d",temp1->data);
         temp1 = temp1->next;
     }
+
+    if(flag)
+        printf("%d",flag - 1);
+
     printf("\n");
 
     return SUCCESS;
@@ -233,8 +241,10 @@ Status perform_addition(Ilist **tail1,Ilist **tail2,Ilist **res_head,Ilist **res
         if(insert_at_first(res_head,res_tail,1) == FAILURE)
             return FAILURE;
     }
-    if(flag)
+    if(flag){
+        printf("The result of addition of 2 operands is : ");
         print_list(*res_head);
+    }
 
     return SUCCESS;
 }
@@ -306,8 +316,10 @@ Status perform_subtraction(Ilist **head1,Ilist **tail1,Ilist **head2,Ilist **tai
         }
     }
     
-    if(flag)
+    if(flag){
+        printf("The result of subtraction of 2 operands is : ");
         print_list(*res_head);
+    }
 
     return SUCCESS;
 }
@@ -337,12 +349,15 @@ Status perform_multiplication(Ilist **tail1,Ilist **tail2,Ilist **res_head,Ilist
             carry = (mul > 9)? mul/10 : 0;
             temp1 = temp1->prev;
         }
+        if(carry)
+            insert_at_first(&list_h2,&list_t2,carry);
         if(perform_addition(&list_t1,&list_t2,res_head,res_tail,cInfo,0) == FAILURE)
             return FAILURE;
 
         temp2 = temp2->prev;
 
         if(temp2 == NULL){
+            printf("The result of multiplication of 2 operands is : ");
             print_list(*res_head);
             break;
         }
@@ -383,23 +398,34 @@ Status perform_division(Ilist **head1,Ilist **tail1,Ilist **head2,Ilist **tail2,
         list_h1 = *res_head;
         list_t1 = *res_tail;
         
-        print_list(list_h1);
+        //print_list(list_h1);
 
         *res_head = NULL;
         *res_tail = NULL;
     }
-    printf("%d\n",cInfo->call_count);
-    insert_at_first(&div_h,&div_t,cInfo->call_count);
+    //printf("%d\n",cInfo->call_count);
+    if(cInfo->call_count == 0)
+        insert_at_first(&div_h,&div_t,cInfo->call_count);
+    else{
+        while(cInfo->call_count != 0){
+            insert_at_first(&div_h,&div_t,cInfo->call_count % 10);
+            cInfo->call_count /= 10;
+        }
+    }
+    printf("The result of division of 2 operands : ");
     print_list(div_h);
-    perform_multiplication(head2,&div_t,res_head,res_tail,cInfo);
+    perform_multiplication(&div_t,tail2,res_head,res_tail,cInfo);
     perform_subtraction(head1,tail1,res_head,res_tail,&rem_h,&rem_t,cInfo,0);
 
+    printf("The remainder is : ");
+    print_list(rem_h);
+    
     if(rem_h->data < 0){
         rem_h = *head1;
         rem_t = *tail1;
     }
+    printf("The remainder is : ");
     print_list(rem_h);
 
     return SUCCESS;
-    
 }
