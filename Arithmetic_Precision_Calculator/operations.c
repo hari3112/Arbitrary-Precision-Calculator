@@ -155,6 +155,20 @@ Status list_comparison(Ilist **head1, Ilist **head2,Calc *cInfo){
     return FAILURE;
 }
 
+Ilist* reverse_list(Ilist *head){
+    Ilist *nextnode = head, *currentnode = head, *prev = NULL;
+
+    while(nextnode != NULL){
+        nextnode = nextnode->next;
+        currentnode->next = prev;
+        prev = currentnode;
+        currentnode = nextnode;
+    }
+
+    return prev;
+
+}
+
 Status create_list(char *argv[], Calc *cInfo){
     int i = 1,j,data;
     cInfo->count_list1 = 0;
@@ -196,7 +210,7 @@ Status create_list(char *argv[], Calc *cInfo){
     else if(cInfo->operator_name == '-')
         perform_subtraction(&head1,&tail1,&head2,&tail2,&res_head,&res_tail,cInfo,1);
     else if(cInfo->operator_name == 'x')
-        perform_multiplication(&tail1,&tail2,&res_head,&res_tail,cInfo);
+        perform_multiplication(&tail1,&tail2,&res_head,&res_tail,cInfo,1);
     else if(cInfo->operator_name == '/')
         perform_division(&head1,&tail1,&head2,&tail2,&res_head,&res_tail,cInfo);
 
@@ -251,80 +265,86 @@ Status perform_addition(Ilist **tail1,Ilist **tail2,Ilist **res_head,Ilist **res
 
 Status perform_subtraction(Ilist **head1,Ilist **tail1,Ilist **head2,Ilist **tail2,Ilist **res_head,Ilist **res_tail,Calc *cInfo,int flag){
 
-    Ilist *temp_t1 = *tail1, *temp_t2 = *tail2, *temp_h1 = *head1, *temp_h2 = *head2;
+    Ilist *temp1 = *head1,*temp2 = *head2;
+    Ilist *list_h1 = NULL,*list_h2 = NULL;
     cInfo->flag = 0;
 
-    if(temp_t1 == NULL && temp_t2 == NULL)
-        return FAILURE;
-    
+    while(temp1 && temp1->data == 0){
+        temp1 = temp1->next;
+        cInfo->count_list1--;
+    }
+
+    while(temp2 && temp2->data == 0){
+        temp2 = temp2->next;
+        cInfo->count_list2--;
+    }
+
+    if(temp1 == NULL && temp2 == NULL){
+        insert_at_first(res_head,res_tail,0);
+        return SUCCESS;
+    }
+
+    list_h1 = temp1;
+    list_h2 = temp2;
+
     if(cInfo->count_list1 < cInfo->count_list2){
-        swap_list(&temp_t1,&temp_t2);
+        swap_list(&list_h1,&list_h2);
         cInfo->flag = 1;
     }
     else if(cInfo->count_list1 == cInfo->count_list2){
-        while(temp_h1 != NULL && temp_h2 != NULL){
-            if(temp_h1->data < temp_h2->data){
-                swap_list(&temp_t1,&temp_t2);
+        while(temp1 != NULL && temp2 != NULL){
+            if(temp1->data > temp2->data)
+                break;
+            else if(temp1->data < temp2->data){
+                swap_list(&list_h1,&list_h2);
                 cInfo->flag = 1;
                 break;
             }
-            else if(temp_h1->data > temp_h2->data)
-                break;
-
-            temp_h1 = temp_h1->next;
-            temp_h2 = temp_h2->next;
+            temp1 = temp1->next;
+            temp2 = temp2->next;
         }
     }
 
-    int borrow = 0;
+    list_h1 = reverse_list(list_h1);
+    list_h2 = reverse_list(list_h2);
 
-    while(temp_t1 != NULL){
-        if(temp_t2 == NULL){
-            if(insert_at_first(res_head,res_tail,temp_t1->data) == FAILURE)
-                return FAILURE;
+    while(list_h1 != NULL){
+        int small = 0;
+        if(list_h2 != NULL){
+            if(list_h1->data < list_h2->data){
+                list_h1->data = list_h1->data + 10;
+                list_h1->next->data--;
+            }
+            insert_at_first(res_head,res_tail,list_h1->data - list_h2->data);
         }
         else{
-            if(temp_t1->data < temp_t2->data){
-                temp_t1->data = temp_t1->data + 10;
-                borrow = 1;
+            if(list_h1->data < small){
+                list_h1->data = list_h1->data + 10;
+                list_h1->next->data--;
             }
-            else
-                borrow = 0;
-
-            if(insert_at_first(res_head,res_tail,temp_t1->data - temp_t2->data) == FAILURE)
-                return FAILURE;
-
-            temp_t2 = temp_t2->prev;
+            insert_at_first(res_head,res_tail,list_h1->data);
         }
+        list_h1 = list_h1->next;
 
-        if(borrow)
-            if(temp_t1->prev != NULL)
-                temp_t1->prev->data--;
-        
-        temp_t1 = temp_t1->prev;
+        if(list_h2 != NULL)
+            list_h2 = list_h2->next;
     }
+
+    while ((*res_head)->data == 0 && (*res_head)->next != NULL)
+        *res_head = (*res_head)->next;
+
 
     if(cInfo->flag){
-        Ilist *first_data = *res_head;
-
-        while(first_data != NULL){
-            if(first_data->data != 0){
-                first_data->data = -1 * first_data->data;
-                break;
-            }
-            first_data = first_data->next;
-        }
+        (*res_head)->data = -1*((*res_head)->data);
     }
     
-    if(flag){
-        printf("The result of subtraction of 2 operands is : ");
+    if(flag)
         print_list(*res_head);
-    }
 
     return SUCCESS;
 }
 
-Status perform_multiplication(Ilist **tail1,Ilist **tail2,Ilist **res_head,Ilist **res_tail,Calc *cInfo){
+Status perform_multiplication(Ilist **tail1,Ilist **tail2,Ilist **res_head,Ilist **res_tail,Calc *cInfo,int flag){
     Ilist *temp1 = *tail1, *temp2 = *tail2;
     Ilist *temp = temp1;
 
@@ -339,14 +359,15 @@ Status perform_multiplication(Ilist **tail1,Ilist **tail2,Ilist **res_head,Ilist
     Ilist *list_h2 = NULL;
     Ilist *list_t2 = NULL;
 
-    int mul, carry = 0, i = 0;
+    int mul, carry, i = 0;
 
     while(temp2 != NULL){
         temp1 = temp;
+        carry = 0;
         while(temp1 != NULL){
             mul = temp1->data * temp2->data;
-            insert_at_first(&list_h2,&list_t2,mul%10 + carry);
-            carry = (mul > 9)? mul/10 : 0;
+            insert_at_first(&list_h2,&list_t2,(mul % 10 + carry)%10);
+            carry = ((mul + carry) > 9)? (mul + carry)/10 : 0;
             temp1 = temp1->prev;
         }
         if(carry)
@@ -357,8 +378,10 @@ Status perform_multiplication(Ilist **tail1,Ilist **tail2,Ilist **res_head,Ilist
         temp2 = temp2->prev;
 
         if(temp2 == NULL){
-            printf("The result of multiplication of 2 operands is : ");
-            print_list(*res_head);
+            if(flag){
+                printf("The result of multiplication of 2 operands is : ");
+                print_list(*res_head);
+            }
             break;
         }
 
@@ -378,7 +401,27 @@ Status perform_multiplication(Ilist **tail1,Ilist **tail2,Ilist **res_head,Ilist
 }
 
 Status perform_division(Ilist **head1,Ilist **tail1,Ilist **head2,Ilist **tail2,Ilist **res_head,Ilist **res_tail,Calc *cInfo){
-    
+    printf("CHeck\n");
+
+    while(*head1 && ((*head1)->data == 0)){
+        *head1 = (*head1)->next;
+        cInfo->count_list1--;
+    }
+
+    while(*head2 && ((*head2)->data == 0)){
+        *head2 = (*head2)->next;
+        if(*head2 == NULL){
+            printf("ERROR : A Number divided by zero leads to infinity\n");
+            return FAILURE;
+        }
+        cInfo->count_list2--;
+    }
+
+    print_list(*head1);
+    print_list(*head2);
+
+    Ilist *list_head = *head1;
+
     Ilist *list_h1 = *head2;
     Ilist *list_t1 = *tail2;
 
@@ -393,17 +436,20 @@ Status perform_division(Ilist **head1,Ilist **tail1,Ilist **head2,Ilist **tail2,
 
     cInfo->call_count = 0;
  
-    while(list_comparison(head1,&list_h1,cInfo) == SUCCESS){
+    while(list_comparison(&list_head,&list_h1,cInfo) == SUCCESS){
         perform_addition(&list_t1,&list_t2,res_head,res_tail,cInfo,0);
         list_h1 = *res_head;
         list_t1 = *res_tail;
         
-        //print_list(list_h1);
+        print_list(list_h1);
 
         *res_head = NULL;
         *res_tail = NULL;
     }
-    //printf("%d\n",cInfo->call_count);
+    printf("%d\n",cInfo->call_count);
+    printf("%d\n",cInfo->count_list1);
+    printf("%d\n",cInfo->count_list2);
+    //print_list(list_h2);
     if(cInfo->call_count == 0)
         insert_at_first(&div_h,&div_t,cInfo->call_count);
     else{
@@ -414,11 +460,8 @@ Status perform_division(Ilist **head1,Ilist **tail1,Ilist **head2,Ilist **tail2,
     }
     printf("The result of division of 2 operands : ");
     print_list(div_h);
-    perform_multiplication(&div_t,tail2,res_head,res_tail,cInfo);
+    perform_multiplication(&div_t,tail2,res_head,res_tail,cInfo,0);
     perform_subtraction(head1,tail1,res_head,res_tail,&rem_h,&rem_t,cInfo,0);
-
-    printf("The remainder is : ");
-    print_list(rem_h);
     
     if(rem_h->data < 0){
         rem_h = *head1;
